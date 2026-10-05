@@ -38,3 +38,26 @@ Ao terminar, basta informar que o projeto foi criado. A configuração local usa
 6. Lembretes/follow-up com consentimento.
 7. Indicadores e validação em staging.
 8. Deploy separado para a primeira clínica.
+
+## Serviços locais de apoio
+
+O ambiente de desenvolvimento usa um Supabase Dev na nuvem e dois serviços locais, sem dados
+reais: Redis compatível com Upstash e WAHA. Eles sobem somente em `127.0.0.1`, portanto não
+ficam acessíveis pela rede.
+
+Com o Colima/Docker ativo, use:
+
+```bash
+cd ~/Claude/DigitalRM-Dental
+set -a; source .env.local; set +a
+docker-compose -f docker-compose.dental-dev.yml up -d
+```
+
+Para abrir o painel durante o desenvolvimento:
+
+```bash
+PATH="/opt/homebrew/opt/node@22/bin:$PATH" corepack pnpm exec next dev --hostname 127.0.0.1
+```
+
+Abra `http://127.0.0.1:3000/login`. O WAHA local é somente infraestrutura de teste: nunca
+pareie nele um número de produção.

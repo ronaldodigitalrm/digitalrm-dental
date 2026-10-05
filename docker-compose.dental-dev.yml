@@ -1,0 +1,61 @@
+# Dependências locais do DigitalRM Dental.
+#
+# Uso:
+#   docker compose -f docker-compose.dental-dev.yml up -d
+#
+# A aplicação Next roda no host com `pnpm dev`. Estes serviços só atendem
+# 127.0.0.1; não conecte um número de WhatsApp real neste ambiente.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  redis_http:
+    image: hiett/serverless-redis-http@sha256:5b0bb9239fce53abf87b2018a7a0deb9ec7bd900c5360738fe5fbeeb426f9150
+    restart: unless-stopped
+    env_file: .env.local
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+      SRH_CONNECTION_STRING: redis://redis:6379
+    ports:
+      - "127.0.0.1:8079:80"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  waha:
+    image: devlikeapro/waha:latest-2026.7.2
+    restart: unless-stopped
+    env_file: .env.local
+    environment:
+      WAHA_API_KEY: "sha512:${WAHA_API_KEY_SHA512}"
+      WHATSAPP_HOOK_URL: http://host.docker.internal:3000/api/v1/webhooks/waha
+      WHATSAPP_HOOK_EVENTS: message.any,message.ack,message.edited,message.revoked,session.status,state.change
+      WHATSAPP_HOOK_HMAC: ${WAHA_HMAC_SECRET}
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WAHA_DASHBOARD_ENABLED: "true"
+    ports:
+      - "127.0.0.1:3030:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - dental_waha_sessions:/app/.sessions
+      - dental_waha_media:/app/.media
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  dental_waha_sessions:
+  dental_waha_media:
