@@ -322,6 +322,17 @@ export const NAV_CATALOG = [
     // na navegação" — a porta existia, era outra.
   },
   {
+    // A porta do produto vertical. Não ganha um grupo próprio porque a rotina
+    // Dental vive entre CRM (pessoas e resultado) e Atendimento (Inbox/Agenda).
+    // O hub mostra a jornada inteira sem duplicar essas fontes de verdade.
+    href: "/app/dental",
+    label: "Central Dental",
+    description: "Prepare serviços, profissionais e agenda da clínica em um só lugar.",
+    icon: "CalendarDots",
+    group: "crm",
+    section: "O dia a dia da venda",
+  },
+  {
     // O BALCÃO. Fica em CRM, e não em Configurações, porque é uso diário de quem
     // está com a cliente na frente — a tela irmã, em Configurações › Financeiro,
     // é onde o negócio se descreve uma vez.
