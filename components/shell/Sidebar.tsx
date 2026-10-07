@@ -237,6 +237,8 @@ export function SidebarContent({
           // Recolhido o sidebar inteiro (rail de 64px), o grupo sempre mostra
           // seus itens — não há onde desenhar cabeçalho nem seta para fechá-lo.
           const aberto = collapsed || !gruposFechados.has(group.id);
+          const filhosDe = (href: string) => items.filter((item) => item.parentHref === href);
+          const itensVisiveis = collapsed ? items : items.filter((item) => !item.parentHref);
           return (
             <div key={group.id} className="space-y-1">
               {/* Colapsado, o sidebar tem 64px: seis rótulos ali seriam ilegíveis.
@@ -270,8 +272,14 @@ export function SidebarContent({
                   aria-label={collapsed ? t(group.label) : undefined}
                   className="space-y-1"
                 >
-                  {items.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                  {itensVisiveis.map((item) => {
+                    const filhos = collapsed ? [] : filhosDe(item.href);
+                    const isActive =
+                      pathname === item.href ||
+                      pathname.startsWith(item.href + "/") ||
+                      filhos.some(
+                        (filho) => pathname === filho.href || pathname.startsWith(filho.href + "/"),
+                      );
                     const Icon = item.icon;
                     return (
                       <li key={item.href}>
@@ -296,6 +304,37 @@ export function SidebarContent({
                             />
                           )}
                         </Link>
+                        {filhos.length > 0 ? (
+                          <ul className="mt-1 space-y-1 border-l border-border/80 pl-3">
+                            {filhos.map((filho) => {
+                              const FilhoIcon = filho.icon;
+                              const filhoAtivo =
+                                pathname === filho.href || pathname.startsWith(filho.href + "/");
+                              return (
+                                <li key={filho.href}>
+                                  <Link
+                                    href={filho.href}
+                                    aria-current={filhoAtivo ? "page" : undefined}
+                                    onClick={onNavigate}
+                                    className={cn(
+                                      "flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-colors",
+                                      filhoAtivo
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                                    )}
+                                  >
+                                    <FilhoIcon
+                                      size={16}
+                                      weight={filhoAtivo ? "fill" : "regular"}
+                                      aria-hidden
+                                    />
+                                    <span className="truncate">{t(filho.label)}</span>
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : null}
                       </li>
                     );
                   })}

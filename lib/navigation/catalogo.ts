@@ -43,6 +43,11 @@ export interface NavMetadata {
   minRole?: Role;
   /** Ausente = só no hub. `true` = uso diário, sobe para o sidebar. */
   sidebar?: boolean;
+  /**
+   * Agrupa uma porta abaixo de outra no menu lateral. A rota continua no próprio
+   * grupo no hub e na busca; só o caminho visual do sidebar muda.
+   */
+  parentHref?: string;
   healthDot?: boolean;
   /**
    * A porta de um MÓDULO OPCIONAL da instalação (`lib/instalacao/modulos.ts`).
@@ -308,18 +313,18 @@ export const NAV_CATALOG = [
     // um tipo por lugar nenhum: a organização recebia três semeados e ficava com
     // eles para sempre.
     href: "/app/settings/tenant/agenda",
-    label: "Tipos de agendamento",
-    description: "O que se pode marcar, quanto dura, onde acontece e quem atende.",
+    label: "Serviços",
+    description: "Os serviços da clínica: duração, preço, local e lembretes.",
     icon: "CalendarBlank",
     group: "organizacao",
     // "Sua empresa", junto de Atendimento e Empresa: é configuração do NEGÓCIO,
     // não da conta de quem está logado. O gate `navegacao-registry` cobra a
     // seção em todo grupo que tem hub, e sem ela o destino não aparece no hub.
     section: "Sua empresa",
-    // SEM `sidebar`, como as outras DEZ entradas de "organizacao": este grupo
-    // tem hub, e se chega às telas dele por "Configurações". Eu tinha posto
-    // `sidebar: true` e a cerca reprovou dizendo "a tela existe e não tem porta
-    // na navegação" — a porta existia, era outra.
+    // No Dental, este cadastro é uso recorrente da recepção. Ele aparece sob a
+    // Central Dental, mas continua na seção de empresa do hub Configurações.
+    sidebar: true,
+    parentHref: "/app/dental",
   },
   {
     // A porta do produto vertical. Não ganha um grupo próprio porque a rotina
@@ -759,11 +764,13 @@ export const NAV_CATALOG = [
   },
   {
     href: "/app/team",
-    label: "Equipe",
-    description: "Quem trabalha aqui, com qual papel e quanta conversa cada um aguenta.",
+    label: "Profissionais",
+    description: "Quem atende na clínica, seus acessos e horários disponíveis.",
     icon: "UsersThree",
     group: "organizacao",
     section: "Sua empresa",
+    sidebar: true,
+    parentHref: "/app/dental",
   },
   {
     // A porta que faltava (issue #144): rodízio de atendimento e restrição de

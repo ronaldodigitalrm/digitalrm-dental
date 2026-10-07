@@ -124,11 +124,22 @@ export function sidebarGroups(
   const visible = new Set<string>(
     destinosDaInterface(settings, isPlatformAdmin, role, modulos).map((d) => d.href),
   );
+  const porHref = new Map(NAV_DESTINATIONS.map((destino) => [destino.href, destino]));
   return NAV_GROUPS.map((group) => ({
     group,
-    items: NAV_DESTINATIONS.filter(
-      (d) => d.group === group.id && (d.sidebar || (!group.hub && !!settings?.destinos)) && visible.has(d.href),
-    ),
+    items: NAV_DESTINATIONS.filter((d) => {
+      const pai = d.parentHref ? porHref.get(d.parentHref) : null;
+      const grupoDoSidebar = pai?.group ?? d.group;
+      // Filho sem pai visível não pode sobrar solto em outra seção: a interface
+      // personalizada escolhe a jornada Dental inteira, não pedaços dela.
+      const paiEstaVisivel = !d.parentHref || visible.has(d.parentHref);
+      return (
+        grupoDoSidebar === group.id &&
+        (d.sidebar || (!group.hub && !!settings?.destinos)) &&
+        visible.has(d.href) &&
+        paiEstaVisivel
+      );
+    }),
   })).filter(
     (g) =>
       g.items.length > 0 ||

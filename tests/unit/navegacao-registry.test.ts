@@ -53,6 +53,14 @@ describe("integridade do registro", () => {
     );
     expect(semSecao).toEqual([]);
   });
+
+  it("todo submenu aponta para uma porta pai existente", () => {
+    const hrefs = new Set(NAV_DESTINATIONS.map((d) => d.href));
+    const paisInvalidos = NAV_DESTINATIONS.filter(
+      (d) => d.parentHref && (!hrefs.has(d.parentHref) || d.parentHref === d.href),
+    ).map((d) => d.href);
+    expect(paisInvalidos).toEqual([]);
+  });
 });
 
 describe("canSee", () => {
@@ -103,14 +111,14 @@ describe("sidebarGroups", () => {
     expect(hub).toContain("/app/settings/tenant/pipelines");
   });
 
-  it("o CRM tem hub, e o sidebar dele fica só com o uso diário", () => {
+  it("o CRM tem hub e a Central Dental organiza os cadastros no sidebar", () => {
     // A decisão que devolveu a dobra em 900px (e2e `navegacao.spec.ts`): quando
     // Tarefas virou o quinto destino de CRM, o menu passou a rolar por 13px.
     // O conserto foi o hub — o desenho que o grupo IA já usava —, não mais
     // densidade raspada do `Sidebar.tsx`.
     //
-    // A lista é EXATA de propósito. `toContain` deixaria um sexto item entrar
-    // calado no sidebar e reabrir a mesma corrida por pixel.
+    // A lista é EXATA de propósito. No fork Dental, os dois cadastros entram
+    // como filhos da Central Dental — e não como novos grupos ou telas cópia.
     //
     // Comandas NÃO entra: ela chegou pedindo a quarta linha, e o e2e mediu o
     // menu rolando em 1280×900 — a mesma corrida por pixel que o hub existe
@@ -128,6 +136,9 @@ describe("sidebarGroups", () => {
       "/app/kanban",
       "/app/contacts",
       "/app/tasks",
+      "/app/settings/tenant/agenda",
+      "/app/dental",
+      "/app/team",
       // "/app/calls" (telefonia por SIP) NÃO entra aqui, e a ausência é a
       // decisão: o módulo é OPCIONAL e nasce desligado (doc 27), então a porta
       // no sidebar custaria um item a TODA instalação — e o vigésimo item é o
@@ -136,6 +147,8 @@ describe("sidebarGroups", () => {
       // para cá no dia em que o app souber que o módulo está ligado (hoje isso
       // é profile do compose, não estado que o aplicativo conheça).
     ]);
+    expect(dest("/app/settings/tenant/agenda").parentHref).toBe("/app/dental");
+    expect(dest("/app/team").parentHref).toBe("/app/dental");
     // E continua alcançável: o hub é a porta dela.
     expect(
       hubSections("crm", true, null).flatMap((s) => s.items.map((i) => i.href)),
@@ -165,7 +178,7 @@ describe("sidebarGroups", () => {
 });
 
 describe("hubSections", () => {
-  it("o hub do CRM é inventário: as seis telas do grupo, nas duas seções", () => {
+  it("o hub do CRM é inventário: inclui a Central Dental nas duas seções", () => {
     // As seções são a régua do sidebar escrita por extenso — o que se abre todo
     // dia contra o que se define uma vez. Lista EXATA: `toContain` deixaria uma
     // tela nova entrar sem que ninguém decidisse de que lado dela ela cai.
@@ -178,6 +191,7 @@ describe("hubSections", () => {
       "/app/contacts",
       "/app/tasks",
       "/app/calls",
+      "/app/dental",
       "/app/comandas",
       "/app/products",
       "/app/settings/tenant/pipelines",
