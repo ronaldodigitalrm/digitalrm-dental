@@ -331,6 +331,7 @@ export const NAV_CATALOG = [
     icon: "CalendarDots",
     group: "crm",
     section: "O dia a dia da venda",
+    sidebar: true,
   },
   {
     // O BALCÃO. Fica em CRM, e não em Configurações, porque é uso diário de quem

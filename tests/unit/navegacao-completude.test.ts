@@ -98,6 +98,14 @@ describe("completude da navegação", () => {
     expect(mortos, `Link morto no registro:\n  ${mortos.join("\n  ")}`).toEqual([]);
   });
 
+  it("todo destino do registro resolve um ícone renderizável", () => {
+    // O catálogo guarda nomes de ícone; o registry é quem os converte em
+    // componentes. Um nome novo sem a entrada correspondente só quebra quando
+    // o Hub tenta renderizar o card — longe demais da alteração para ser óbvio.
+    const semIcone = NAV_DESTINATIONS.filter((d) => !d.icon).map((d) => d.href);
+    expect(semIcone, `Destino sem ícone no registry:\n  ${semIcone.join("\n  ")}`).toEqual([]);
+  });
+
   it("todo hub de grupo aponta para uma tela que existe", () => {
     const mortos = HUBS.filter((h) => !ROTAS.includes(h));
     expect(mortos, `Hub apontando para rota inexistente:\n  ${mortos.join("\n  ")}`).toEqual([]);
