@@ -498,13 +498,13 @@ export function TiposDeAgendamentoClient({
                   {t("Cancelar")}
                 </Button>
                 <Button type="submit" size="sm" data-testid="salvar-novo-tipo" disabled={salvando}>
-                  {salvando ? t("Criando…") : t("Criar tipo")}
+                  {salvando ? t("Criando…") : t("Criar serviço")}
                 </Button>
               </div>
             </form>
           ) : (
             <Button size="sm" data-testid="abrir-novo-tipo" onClick={() => setCriando(true)}>
-              {t("Novo tipo de agendamento")}
+              {t("Novo serviço")}
             </Button>
           )}
         </div>
@@ -525,7 +525,7 @@ export function TiposDeAgendamentoClient({
             className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-sm"
           >
             <p className="font-medium text-destructive">
-              {t("Não consegui carregar os tipos de agendamento.")}
+              {t("Não consegui carregar os serviços.")}
             </p>
             <p className="mt-1 text-text-muted">
               {t(
@@ -536,7 +536,7 @@ export function TiposDeAgendamentoClient({
           </li>
         ) : tiposIniciais.length === 0 ? (
           <li data-testid="sem-tipos" className="rounded-lg border border-border bg-surface p-4 text-sm text-text-muted">
-            {t("Nenhum tipo de agendamento ainda. Crie o primeiro para que a Agenda tenha o que oferecer.")}
+            {t("Nenhum serviço ainda. Crie o primeiro para que a recepção e a Agenda saibam o que oferecer.")}
           </li>
         ) : null}
         {tiposIniciais.map((tipo) => (
