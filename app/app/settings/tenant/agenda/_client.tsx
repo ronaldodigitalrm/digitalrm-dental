@@ -342,7 +342,10 @@ export function TiposDeAgendamentoClient({
 }) {
   const t = useT();
   const router = useRouter();
-  const [criando, setCriando] = React.useState(false);
+  // A clínica cadastra serviços em sequência durante a implantação. O formulário
+  // fica aberto por padrão para que a ação principal não fique escondida atrás
+  // de mais um clique.
+  const [criando, setCriando] = React.useState(true);
   /**
    * O RASCUNHO NASCE COM QUEM ESTÁ CRIANDO.
    *
@@ -390,11 +393,24 @@ export function TiposDeAgendamentoClient({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6" data-testid="tipos-de-agendamento-config">
       {podeEditar ? (
-        <div>
+        <section className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border bg-surface-elevated px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-text">{t("Cadastrar serviço")}</h2>
+              <p className="mt-1 max-w-2xl text-sm text-text-muted">
+                {t("Defina o que a recepção pode oferecer, quem pode realizar e onde o atendimento acontece.")}
+              </p>
+            </div>
+            {criando ? null : (
+              <Button size="sm" data-testid="abrir-novo-tipo" onClick={() => setCriando(true)}>
+                {t("Novo serviço")}
+              </Button>
+            )}
+          </div>
           {criando ? (
             <form
               data-testid="form-novo-tipo"
-            className="grid gap-4 border border-border bg-surface p-5 sm:grid-cols-2"
+              className="grid gap-5 p-5 sm:grid-cols-2"
               onSubmit={async (e) => {
                 e.preventDefault();
                 const feito = await comErro(
@@ -537,14 +553,22 @@ export function TiposDeAgendamentoClient({
               </div>
             </form>
           ) : (
-            <Button size="sm" data-testid="abrir-novo-tipo" onClick={() => setCriando(true)}>
-              {t("Novo serviço")}
-            </Button>
+            <div className="p-5 text-sm text-text-muted">
+              {t("Quando precisar, use “Novo serviço” para adicionar outro item ao catálogo da clínica.")}
+            </div>
           )}
-        </div>
+        </section>
       ) : null}
 
-      <ul className="flex flex-col gap-2" data-testid="lista-de-tipos">
+      <section aria-labelledby="servicos-cadastrados">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <h2 id="servicos-cadastrados" className="text-lg font-semibold text-text">{t("Serviços cadastrados")}</h2>
+            <p className="mt-1 text-sm text-text-muted">{t("Cada card resume como o serviço será oferecido na agenda.")}</p>
+          </div>
+          <span className="text-sm tabular-nums text-text-muted">{tiposIniciais.length} {tiposIniciais.length === 1 ? t("serviço") : t("serviços")}</span>
+        </div>
+      <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="lista-de-tipos">
         {/*
           TRÊS ESTADOS, NÃO DOIS. "A consulta falhou" nunca pode ser desenhada
           como "não há nada": foi assim que esta tela disse "nenhum tipo" com
@@ -577,7 +601,7 @@ export function TiposDeAgendamentoClient({
           <li
             key={tipo.id}
             data-testid={`tipo-${tipo.id}`}
-            className={`border border-border bg-surface p-4 ${tipo.is_active ? "" : "opacity-60"}`}
+            className={`rounded-xl border border-border bg-surface p-4 ${editandoId === tipo.id ? "md:col-span-2 xl:col-span-3" : ""} ${tipo.is_active ? "" : "opacity-60"}`}
           >
             <div className="flex flex-wrap items-center gap-2">
               {/* Sem t(): é o nome que quem opera digitou no campo acima, não
@@ -849,16 +873,17 @@ export function TiposDeAgendamentoClient({
           </li>
         ))}
       </ul>
+      </section>
 
       <section className="border-t border-border pt-8" aria-labelledby="regras-da-agenda">
         <h2 id="regras-da-agenda" className="text-lg font-semibold text-text">Regras da agenda</h2>
         <p className="mt-1 text-sm text-text-muted">Configurações gerais que valem para toda a clínica.</p>
-        <div className="mt-5 flex flex-col gap-4">
-          {podeConfigurarGoogle && <AgendasConectadas />}
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          {podeConfigurarGoogle && <div className="lg:col-span-2"><AgendasConectadas /></div>}
           <PrazosDePresenca podeEditar={podeEditar}/>
           <ClientePelaAgenda ligadoInicial={clientePelaAgendaLigado} podeLigar={podeLigarClientePelaAgenda} />
           <AgendaDosColegas ligadoInicial={colegasPodemMexerNaAgendaLigado} podeMudar={podeMudarAgendaDosColegas} />
-          <DiasBloqueados podeEditar={podeEditar}/>
+          <div className="lg:col-span-2"><DiasBloqueados podeEditar={podeEditar}/></div>
         </div>
       </section>
     </div>
