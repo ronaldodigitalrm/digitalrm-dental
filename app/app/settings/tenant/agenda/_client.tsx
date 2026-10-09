@@ -392,6 +392,7 @@ export function TiposDeAgendamentoClient({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6" data-testid="tipos-de-agendamento-config">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(19rem,0.8fr)_minmax(0,1.7fr)]">
       {podeEditar ? (
         <section className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border bg-surface-elevated px-5 py-4">
@@ -410,7 +411,7 @@ export function TiposDeAgendamentoClient({
           {criando ? (
             <form
               data-testid="form-novo-tipo"
-              className="grid gap-5 p-5 sm:grid-cols-2"
+              className="grid gap-5 p-5"
               onSubmit={async (e) => {
                 e.preventDefault();
                 const feito = await comErro(
@@ -874,6 +875,7 @@ export function TiposDeAgendamentoClient({
         ))}
       </ul>
       </section>
+      </div>
 
       <section className="border-t border-border pt-8" aria-labelledby="regras-da-agenda">
         <h2 id="regras-da-agenda" className="text-lg font-semibold text-text">Regras da agenda</h2>
