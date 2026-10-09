@@ -3345,6 +3345,7 @@ export type Database = {
           category: string
           created_at: string
           default_owner_user_id: string | null
+          dental_category_id: string | null
           description: string | null
           duration_minutes: number
           id: string
@@ -3374,6 +3375,7 @@ export type Database = {
           category?: string
           created_at?: string
           default_owner_user_id?: string | null
+          dental_category_id?: string | null
           description?: string | null
           duration_minutes?: number
           id?: string
@@ -3403,6 +3405,7 @@ export type Database = {
           category?: string
           created_at?: string
           default_owner_user_id?: string | null
+          dental_category_id?: string | null
           description?: string | null
           duration_minutes?: number
           id?: string
@@ -3426,6 +3429,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_event_types_dental_category_id_fkey"
+            columns: ["dental_category_id"]
+            isOneToOne: false
+            referencedRelation: "dental_service_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calendar_event_types_organization_id_fkey"
             columns: ["organization_id"]
@@ -3547,6 +3557,26 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      dental_service_locations: {
+        Row: { created_at: string; event_type_id: string; location_id: string; organization_id: string }
+        Insert: { created_at?: string; event_type_id: string; location_id: string; organization_id: string }
+        Update: { created_at?: string; event_type_id?: string; location_id?: string; organization_id?: string }
+        Relationships: [
+          { foreignKeyName: "dental_service_locations_event_type_id_fkey"; columns: ["event_type_id"]; isOneToOne: false; referencedRelation: "calendar_event_types"; referencedColumns: ["id"] },
+          { foreignKeyName: "dental_service_locations_location_id_fkey"; columns: ["location_id"]; isOneToOne: false; referencedRelation: "dental_locations"; referencedColumns: ["id"] },
+          { foreignKeyName: "dental_service_locations_organization_id_fkey"; columns: ["organization_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+        ]
+      }
+      dental_service_professional_types: {
+        Row: { created_at: string; event_type_id: string; organization_id: string; professional_type_id: string }
+        Insert: { created_at?: string; event_type_id: string; organization_id: string; professional_type_id: string }
+        Update: { created_at?: string; event_type_id?: string; organization_id?: string; professional_type_id?: string }
+        Relationships: [
+          { foreignKeyName: "dental_service_professional_types_event_type_id_fkey"; columns: ["event_type_id"]; isOneToOne: false; referencedRelation: "calendar_event_types"; referencedColumns: ["id"] },
+          { foreignKeyName: "dental_service_professional_types_organization_id_fkey"; columns: ["organization_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+          { foreignKeyName: "dental_service_professional_types_professional_type_id_fkey"; columns: ["professional_type_id"]; isOneToOne: false; referencedRelation: "dental_professional_types"; referencedColumns: ["id"] },
         ]
       }
       calendar_external_events: {

@@ -122,6 +122,11 @@ const camposDoTipo = {
    * É semente do item da comanda, nunca o preço dele — o item congela o seu.
    */
   default_price_cents: z.number().int().min(0).max(100_000_000).nullish(),
+  // Catálogos Dental: valores sempre são ids de registros da própria clínica.
+  // A checagem de pertencimento acontece antes da escrita, no helper abaixo.
+  dental_category_id: z.string().uuid().optional(),
+  dental_professional_type_ids: z.array(z.string().uuid()).min(1).max(30).optional(),
+  dental_location_ids: z.array(z.string().uuid()).min(1).max(30).optional(),
   reminder_minutes_before: z
     .number()
     .int()
@@ -202,6 +207,57 @@ const alterarSchema = criarSchema.partial().extend({
     }),
 });
 const desativarSchema = z.object({ id: z.string().uuid() });
+
+async function validarCatalogosDental(
+  admin: ReturnType<typeof createAdminClient>,
+  organizationId: string,
+  categoryId: string | undefined,
+  professionalTypeIds: string[] | undefined,
+  locationIds: string[] | undefined,
+): Promise<string | null> {
+  const [categoria, tipos, locais] = await Promise.all([
+    categoryId
+      ? admin.from("dental_service_categories").select("id").eq("organization_id", organizationId).eq("id", categoryId).eq("is_active", true).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    professionalTypeIds?.length
+      ? admin.from("dental_professional_types").select("id").eq("organization_id", organizationId).eq("is_active", true).in("id", [...new Set(professionalTypeIds)])
+      : Promise.resolve({ data: [], error: null }),
+    locationIds?.length
+      ? admin.from("dental_locations").select("id").eq("organization_id", organizationId).eq("is_active", true).in("id", [...new Set(locationIds)])
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (categoria.error || tipos.error || locais.error) return "Não foi possível validar os cadastros Dental.";
+  if (categoryId && !categoria.data) return "A categoria selecionada não está ativa nesta clínica.";
+  if (professionalTypeIds && (tipos.data?.length ?? 0) !== new Set(professionalTypeIds).size) return "Um dos tipos de profissional não está ativo nesta clínica.";
+  if (locationIds && (locais.data?.length ?? 0) !== new Set(locationIds).size) return "Um dos locais não está ativo nesta clínica.";
+  return null;
+}
+
+async function salvarVinculosDental(
+  admin: ReturnType<typeof createAdminClient>,
+  organizationId: string,
+  eventTypeId: string,
+  professionalTypeIds: string[] | undefined,
+  locationIds: string[] | undefined,
+): Promise<string | null> {
+  if (professionalTypeIds !== undefined) {
+    const { error: apagar } = await admin.from("dental_service_professional_types").delete().eq("organization_id", organizationId).eq("event_type_id", eventTypeId);
+    if (apagar) return apagar.message;
+    if (professionalTypeIds.length) {
+      const { error } = await admin.from("dental_service_professional_types").insert([...new Set(professionalTypeIds)].map((professional_type_id) => ({ organization_id: organizationId, event_type_id: eventTypeId, professional_type_id })));
+      if (error) return error.message;
+    }
+  }
+  if (locationIds !== undefined) {
+    const { error: apagar } = await admin.from("dental_service_locations").delete().eq("organization_id", organizationId).eq("event_type_id", eventTypeId);
+    if (apagar) return apagar.message;
+    if (locationIds.length) {
+      const { error } = await admin.from("dental_service_locations").insert([...new Set(locationIds)].map((location_id) => ({ organization_id: organizationId, event_type_id: eventTypeId, location_id })));
+      if (error) return error.message;
+    }
+  }
+  return null;
+}
 
 /**
  * O slug sai do NOME, e é estável depois de criado.
@@ -289,9 +345,18 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const admin = createAdminClient();
+  const { dental_professional_type_ids, dental_location_ids, ...camposDoServico } = lido.data;
+  const erroCatalogos = await validarCatalogosDental(
+    admin,
+    autorizado.org.orgId,
+    camposDoServico.dental_category_id,
+    dental_professional_type_ids,
+    dental_location_ids,
+  );
+  if (erroCatalogos) return fail("validation_failed", t(erroCatalogos), 422, { requestId });
   const { data, error } = await admin
     .from("calendar_event_types")
-    .insert({ ...lido.data, organization_id: autorizado.org.orgId, slug: slugDe(lido.data.name) })
+    .insert({ ...camposDoServico, organization_id: autorizado.org.orgId, slug: slugDe(lido.data.name) })
     .select("id, slug")
     .single();
 
@@ -302,6 +367,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
     return fail("internal_error", error.message, 500, { requestId });
   }
+  const erroVinculos = await salvarVinculosDental(
+    admin,
+    autorizado.org.orgId,
+    data.id,
+    dental_professional_type_ids,
+    dental_location_ids,
+  );
+  if (erroVinculos) return fail("internal_error", erroVinculos, 500, { requestId });
 
   await audit({
     actorUserId: autorizado.user.id,
@@ -309,7 +382,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     organizationId: autorizado.org.orgId,
     resourceType: "calendar_event_types",
     resourceId: data.id,
-    metadata: { nome: lido.data.name, categoria: lido.data.category, duracao: lido.data.duration_minutes },
+    metadata: { nome: lido.data.name, categoria: lido.data.category, duracao: lido.data.duration_minutes, dental_category_id: camposDoServico.dental_category_id ?? null },
   });
   return ok(data, { requestId, status: 201 });
 }
@@ -329,27 +402,51 @@ export async function PATCH(req: NextRequest): Promise<Response> {
     // legível a quem opera em espanhol.
     return fail("validation_failed", t(lido.error.issues[0]?.message ?? "corpo inválido"), 422, { requestId });
   }
-  const { id, ...bruto } = lido.data;
+  const { id, dental_professional_type_ids, dental_location_ids, ...bruto } = lido.data;
   const campos = Object.fromEntries(
     Object.entries(bruto).filter(([, v]) => v !== undefined),
   );
-  if (Object.keys(campos).length === 0) {
+  if (Object.keys(campos).length === 0 && dental_professional_type_ids === undefined && dental_location_ids === undefined) {
     // Recusa em vez de UPDATE vazio: "alterei" sobre nada é a mesma família de
     // mentira que o "Marcado ✓" sem linha no banco.
     return fail("validation_failed", t("Nenhum campo para alterar."), 422, { requestId });
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("calendar_event_types")
-    .update(campos)
-    .eq("id", id)
-    .eq("organization_id", autorizado.org.orgId)
-    .select("id")
-    .maybeSingle();
+  const erroCatalogos = await validarCatalogosDental(
+    admin,
+    autorizado.org.orgId,
+    typeof campos.dental_category_id === "string" ? campos.dental_category_id : undefined,
+    dental_professional_type_ids,
+    dental_location_ids,
+  );
+  if (erroCatalogos) return fail("validation_failed", t(erroCatalogos), 422, { requestId });
+  const operacao = Object.keys(campos).length
+    ? admin
+        .from("calendar_event_types")
+        .update(campos)
+        .eq("id", id)
+        .eq("organization_id", autorizado.org.orgId)
+        .select("id")
+        .maybeSingle()
+    : admin
+        .from("calendar_event_types")
+        .select("id")
+        .eq("id", id)
+        .eq("organization_id", autorizado.org.orgId)
+        .maybeSingle();
+  const { data, error } = await operacao;
 
   if (error) return fail("internal_error", error.message, 500, { requestId });
   if (!data) return fail("not_found", t("Tipo de agendamento não encontrado."), 404, { requestId });
+  const erroVinculos = await salvarVinculosDental(
+    admin,
+    autorizado.org.orgId,
+    id,
+    dental_professional_type_ids,
+    dental_location_ids,
+  );
+  if (erroVinculos) return fail("internal_error", erroVinculos, 500, { requestId });
 
   await audit({
     actorUserId: autorizado.user.id,
@@ -357,7 +454,7 @@ export async function PATCH(req: NextRequest): Promise<Response> {
     organizationId: autorizado.org.orgId,
     resourceType: "calendar_event_types",
     resourceId: id,
-    metadata: { campos: Object.keys(campos) },
+    metadata: { campos: [...Object.keys(campos), ...(dental_professional_type_ids !== undefined ? ["dental_professional_type_ids"] : []), ...(dental_location_ids !== undefined ? ["dental_location_ids"] : [])] },
   });
   return ok(data, { requestId });
 }

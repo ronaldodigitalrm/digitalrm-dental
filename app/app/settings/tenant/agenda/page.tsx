@@ -56,11 +56,11 @@ export default async function TiposDeAgendamentoPage() {
   //
   // Lista vazia e falha de leitura são fatos diferentes, e a tela tem de
   // dizer qual dos dois aconteceu.
-  const [{ data: tipos, error: erroTipos }, { data: pessoas }, { data: org }] = await Promise.all([
+  const [{ data: tipos, error: erroTipos }, { data: pessoas }, { data: org }, { data: categorias }, { data: tiposProfissionais }, { data: locais }, { data: vinculosProfissionais }, { data: vinculosLocais }] = await Promise.all([
     supabase
       .from("calendar_event_types")
       .select(
-        "id, name, slug, description, category, duration_minutes, location_kind, location_details, default_owner_user_id, requires_confirmation, is_active, reminder_enabled, reminder_minutes_before, reminder_extra_offsets_minutes, reminder_body, reminder_bodies, default_price_cents",
+        "id, name, slug, description, category, dental_category_id, duration_minutes, location_kind, location_details, default_owner_user_id, requires_confirmation, is_active, reminder_enabled, reminder_minutes_before, reminder_extra_offsets_minutes, reminder_body, reminder_bodies, default_price_cents",
       )
       .eq("organization_id", activeOrg.orgId)
       .order("is_active", { ascending: false })
@@ -74,7 +74,18 @@ export default async function TiposDeAgendamentoPage() {
     // pela sessão funciona (a policy de leitura é de membro); gravar é só pela
     // RPC, que a action chama.
     supabase.from("organizations").select("settings").eq("id", activeOrg.orgId).maybeSingle(),
+    supabase.from("dental_service_categories").select("id, name").eq("organization_id", activeOrg.orgId).eq("is_active", true).order("name"),
+    supabase.from("dental_professional_types").select("id, name").eq("organization_id", activeOrg.orgId).eq("is_active", true).order("name"),
+    supabase.from("dental_locations").select("id, name").eq("organization_id", activeOrg.orgId).eq("is_active", true).order("name"),
+    supabase.from("dental_service_professional_types").select("event_type_id, professional_type_id").eq("organization_id", activeOrg.orgId),
+    supabase.from("dental_service_locations").select("event_type_id, location_id").eq("organization_id", activeOrg.orgId),
   ]);
+
+  const tiposComCatalogos = (tipos ?? []).map((tipo) => ({
+    ...tipo,
+    dental_professional_type_ids: (vinculosProfissionais ?? []).filter((v) => v.event_type_id === tipo.id).map((v) => v.professional_type_id),
+    dental_location_ids: (vinculosLocais ?? []).filter((v) => v.event_type_id === tipo.id).map((v) => v.location_id),
+  }));
 
   // O NOME DE GENTE, e não o fragmento de UUID.
   //
@@ -92,15 +103,19 @@ export default async function TiposDeAgendamentoPage() {
   const nomes = await nomesDosAtendentes((pessoas ?? []).map((p) => String(p.user_id)));
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("Serviços")}</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          {t("O catálogo de serviços da clínica: duração, preço, locais, profissionais e lembretes que a recepção pode oferecer.")}
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-7 sm:px-8 lg:py-10">
+      <header className="border-b border-border pb-8">
+        <p className="text-sm font-medium text-accent">{t("Central Dental")}</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-text">{t("Serviços da clínica")}</h1>
+        <p className="mt-3 max-w-3xl text-base leading-7 text-text-muted">
+          {t("Monte o que a recepção pode oferecer: categoria, duração, profissionais permitidos, locais e lembretes.")}
         </p>
       </header>
       <TiposDeAgendamentoClient
-        tiposIniciais={(tipos ?? []) as TipoRow[]}
+        tiposIniciais={tiposComCatalogos as TipoRow[]}
+        categoriasDental={categorias ?? []}
+        tiposProfissionaisDental={tiposProfissionais ?? []}
+        locaisDental={locais ?? []}
         erroDeLeitura={erroTipos ? erroTipos.message : null}
         pessoas={(pessoas ?? []).map((p) => ({
           id: String(p.user_id),
@@ -123,6 +138,6 @@ export default async function TiposDeAgendamentoPage() {
         // etiquetas de todo contato com histórico. A RPC cobra de novo.
         podeLigarClientePelaAgenda={ROLE_RANK[activeOrg.role] >= ROLE_RANK.admin}
       />
-    </div>
+    </main>
   );
 }

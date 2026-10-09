@@ -33,6 +33,9 @@ export interface TipoRow {
   slug: string;
   description: string | null;
   category: string;
+  dental_category_id: string | null;
+  dental_professional_type_ids: string[];
+  dental_location_ids: string[];
   duration_minutes: number;
   location_kind: string;
   location_details: string | null;
@@ -78,7 +81,9 @@ const rotuloDe = (lista: ReadonlyArray<{ valor: string; rotulo: string }>, valor
 
 interface Rascunho {
   name: string;
-  category: string;
+  dental_category_id: string;
+  dental_professional_type_ids: string[];
+  dental_location_ids: string[];
   duration_minutes: number;
   location_kind: string;
   default_owner_user_id: string;
@@ -86,7 +91,9 @@ interface Rascunho {
 
 const VAZIO: Rascunho = {
   name: "",
-  category: "consulta",
+  dental_category_id: "",
+  dental_professional_type_ids: [],
+  dental_location_ids: [],
   duration_minutes: 30,
   location_kind: "in_person",
   default_owner_user_id: "",
@@ -312,6 +319,9 @@ export function TiposDeAgendamentoClient({
   podeLigarClientePelaAgenda,
   colegasPodemMexerNaAgendaLigado,
   podeMudarAgendaDosColegas,
+  categoriasDental,
+  tiposProfissionaisDental,
+  locaisDental,
 }: {
   tiposIniciais: TipoRow[];
   pessoas: Array<{ id: string; papel: string; nome: string }>;
@@ -326,6 +336,9 @@ export function TiposDeAgendamentoClient({
   /** `organizations.settings.colegas_podem_mexer_na_agenda` (migration 0343). */
   colegasPodemMexerNaAgendaLigado: boolean;
   podeMudarAgendaDosColegas: boolean;
+  categoriasDental: Array<{ id: string; name: string }>;
+  tiposProfissionaisDental: Array<{ id: string; name: string }>;
+  locaisDental: Array<{ id: string; name: string }>;
 }) {
   const t = useT();
   const router = useRouter();
@@ -354,6 +367,9 @@ export function TiposDeAgendamentoClient({
   }));
   const [salvando, setSalvando] = React.useState(false);
   const [editandoId, setEditandoId] = React.useState<string | null>(null);
+  const categoriasPorId = new Map(categoriasDental.map((categoria) => [categoria.id, categoria.name]));
+  const profissionaisPorId = new Map(tiposProfissionaisDental.map((tipo) => [tipo.id, tipo.name]));
+  const locaisPorId = new Map(locaisDental.map((local) => [local.id, local.name]));
 
   async function comErro(acao: () => Promise<unknown>, mensagem: string) {
     setSalvando(true);
@@ -372,37 +388,27 @@ export function TiposDeAgendamentoClient({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4" data-testid="tipos-de-agendamento-config">
-      {podeConfigurarGoogle && <AgendasConectadas />}
-      <PrazosDePresenca podeEditar={podeEditar}/>
-      <ClientePelaAgenda
-        ligadoInicial={clientePelaAgendaLigado}
-        podeLigar={podeLigarClientePelaAgenda}
-      />
-      {/* A opção da issue #978 fica ao lado das outras regras de comportamento
-          da agenda: é a mesma pergunta ("como a agenda se comporta nesta
-          empresa?"), e separá-la noutra tela esconderia de quem configura que
-          ela existe. */}
-      <AgendaDosColegas
-        ligadoInicial={colegasPodemMexerNaAgendaLigado}
-        podeMudar={podeMudarAgendaDosColegas}
-      />
-      <DiasBloqueados podeEditar={podeEditar}/>
+    <div className="flex min-h-0 flex-1 flex-col gap-6" data-testid="tipos-de-agendamento-config">
       {podeEditar ? (
         <div>
           {criando ? (
             <form
               data-testid="form-novo-tipo"
-              className="grid gap-3 rounded-lg border border-border bg-surface p-4 sm:grid-cols-2"
+            className="grid gap-4 border border-border bg-surface p-5 sm:grid-cols-2"
               onSubmit={async (e) => {
                 e.preventDefault();
                 const feito = await comErro(
                   () =>
                     apiClient.post("/api/v1/agenda/tipos", {
                       name: rascunho.name.trim(),
-                      category: rascunho.category,
+                      // Os campos legados mantêm compatibilidade com a agenda
+                      // genérica; o catálogo Dental é a fonte mostrada à clínica.
+                      category: "procedimento",
                       duration_minutes: Number(rascunho.duration_minutes),
-                      location_kind: rascunho.location_kind,
+                      location_kind: "in_person",
+                      dental_category_id: rascunho.dental_category_id,
+                      dental_professional_type_ids: rascunho.dental_professional_type_ids,
+                      dental_location_ids: rascunho.dental_location_ids,
                       ...(rascunho.default_owner_user_id
                         ? { default_owner_user_id: rascunho.default_owner_user_id }
                         : {}),
@@ -428,16 +434,18 @@ export function TiposDeAgendamentoClient({
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-text-muted">
-                {t("Categoria")}
+                {t("Categoria do serviço")}
                 <select
                   data-testid="novo-tipo-categoria"
-                  value={rascunho.category}
-                  onChange={(e) => setRascunho((r) => ({ ...r, category: e.target.value }))}
+                  required
+                  value={rascunho.dental_category_id}
+                  onChange={(e) => setRascunho((r) => ({ ...r, dental_category_id: e.target.value }))}
                   className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
                 >
-                  {CATEGORIAS.map((c) => (
-                    <option key={c.valor} value={c.valor}>
-                      {t(c.rotulo)}
+                  <option value="">{t("Selecione uma categoria")}</option>
+                  {categoriasDental.map((categoria) => (
+                    <option key={categoria.id} value={categoria.id}>
+                      {categoria.name}
                     </option>
                   ))}
                 </select>
@@ -457,19 +465,36 @@ export function TiposDeAgendamentoClient({
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-text-muted">
-                {t("Onde acontece")}
+                {t("Tipos de profissional que podem realizar")}
                 <select
-                  data-testid="novo-tipo-local"
-                  value={rascunho.location_kind}
-                  onChange={(e) => setRascunho((r) => ({ ...r, location_kind: e.target.value }))}
-                  className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
+                  data-testid="novo-tipo-profissionais"
+                  multiple
+                  required
+                  value={rascunho.dental_professional_type_ids}
+                  onChange={(e) => setRascunho((r) => ({ ...r, dental_professional_type_ids: Array.from(e.currentTarget.selectedOptions, (option) => option.value) }))}
+                  className="min-h-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
                 >
-                  {LOCAIS.map((l) => (
-                    <option key={l.valor} value={l.valor}>
-                      {t(l.rotulo)}
+                  {tiposProfissionaisDental.map((tipoProfissional) => (
+                    <option key={tipoProfissional.id} value={tipoProfissional.id}>
+                      {tipoProfissional.name}
                     </option>
                   ))}
                 </select>
+                <span className="text-[11px] font-normal text-text-muted">{t("Use ⌘/Ctrl para escolher mais de um.")}</span>
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-medium text-text-muted sm:col-span-2">
+                {t("Locais onde este serviço pode acontecer")}
+                <select
+                  data-testid="novo-tipo-locais"
+                  multiple
+                  required
+                  value={rascunho.dental_location_ids}
+                  onChange={(e) => setRascunho((r) => ({ ...r, dental_location_ids: Array.from(e.currentTarget.selectedOptions, (option) => option.value) }))}
+                  className="min-h-24 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
+                >
+                  {locaisDental.map((local) => <option key={local.id} value={local.id}>{local.name}</option>)}
+                </select>
+                <span className="text-[11px] font-normal text-text-muted">{t("Use ⌘/Ctrl para escolher mais de um.")}</span>
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-text-muted sm:col-span-2">
                 {/* ⚠️ SEM RESPONSÁVEL NÃO HÁ AGENDA. `lib/agenda/consulta.ts` exige
@@ -543,7 +568,7 @@ export function TiposDeAgendamentoClient({
           <li
             key={tipo.id}
             data-testid={`tipo-${tipo.id}`}
-            className={`rounded-lg border border-border bg-surface p-3 ${tipo.is_active ? "" : "opacity-60"}`}
+            className={`border border-border bg-surface p-4 ${tipo.is_active ? "" : "opacity-60"}`}
           >
             <div className="flex flex-wrap items-center gap-2">
               {/* Sem t(): é o nome que quem opera digitou no campo acima, não
@@ -551,10 +576,11 @@ export function TiposDeAgendamentoClient({
                   "Seguimiento" (chave existente, de outro contexto). */}
               <span className="text-sm font-medium text-text">{tipo.name}</span>
               <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-text-muted">
-                {t(rotuloDe(CATEGORIAS, tipo.category))}
+                {tipo.dental_category_id ? categoriasPorId.get(tipo.dental_category_id) ?? t("Categoria removida") : t(rotuloDe(CATEGORIAS, tipo.category))}
               </span>
               <span className="text-xs tabular-nums text-text-muted">{tipo.duration_minutes} min</span>
-              <span className="text-xs text-text-muted">{t(rotuloDe(LOCAIS, tipo.location_kind))}</span>
+              {tipo.dental_professional_type_ids.length ? <span className="text-xs text-text-muted">{tipo.dental_professional_type_ids.map((id) => profissionaisPorId.get(id)).filter(Boolean).join(", ")}</span> : null}
+              {tipo.dental_location_ids.length ? <span className="text-xs text-text-muted">{tipo.dental_location_ids.map((id) => locaisPorId.get(id)).filter(Boolean).join(", ")}</span> : <span className="text-xs text-text-muted">{t(rotuloDe(LOCAIS, tipo.location_kind))}</span>}
               {!tipo.default_owner_user_id ? (
                 // O aviso existe porque o sintoma é MUDO: sem dono, a tela de
                 // marcar simplesmente não mostra horário, sem dizer por quê.
@@ -668,7 +694,10 @@ export function TiposDeAgendamentoClient({
                       apiClient.patch("/api/v1/agenda/tipos", {
                         id: tipo.id,
                         name: String(dados.get("name") ?? "").trim(),
-                        category: String(dados.get("category") ?? tipo.category),
+                        category: tipo.category,
+                        dental_category_id: String(dados.get("dental_category_id") ?? ""),
+                        dental_professional_type_ids: dados.getAll("dental_professional_type_ids").map(String),
+                        dental_location_ids: dados.getAll("dental_location_ids").map(String),
                         duration_minutes: Number(dados.get("duration_minutes") ?? tipo.duration_minutes),
                         // `|| null`, e NÃO omitir quando vazio.
                         //
@@ -732,6 +761,13 @@ export function TiposDeAgendamentoClient({
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-text-muted">
+                    {t("Categoria do serviço")}
+                    <select name="dental_category_id" required defaultValue={tipo.dental_category_id ?? ""} className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text">
+                      <option value="">{t("Selecione uma categoria")}</option>
+                      {categoriasDental.map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-text-muted">
                     {t("Duração")}
                     <input
                       name="duration_minutes"
@@ -777,6 +813,22 @@ export function TiposDeAgendamentoClient({
                   </span>
                   </label>
                 </div>
+                <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-xs text-text-muted">
+                    {t("Tipos de profissional que podem realizar")}
+                    <select name="dental_professional_type_ids" multiple required defaultValue={tipo.dental_professional_type_ids} className="min-h-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text">
+                      {tiposProfissionaisDental.map((tipoProfissional) => <option key={tipoProfissional.id} value={tipoProfissional.id}>{tipoProfissional.name}</option>)}
+                    </select>
+                    <span className="text-[11px] text-text-muted">{t("Use ⌘/Ctrl para escolher mais de um.")}</span>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-text-muted">
+                    {t("Locais onde este serviço pode acontecer")}
+                    <select name="dental_location_ids" multiple required defaultValue={tipo.dental_location_ids} className="min-h-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text">
+                      {locaisDental.map((local) => <option key={local.id} value={local.id}>{local.name}</option>)}
+                    </select>
+                    <span className="text-[11px] text-text-muted">{t("Use ⌘/Ctrl para escolher mais de um.")}</span>
+                  </label>
+                </div>
                 <LembreteDoCompromisso tipo={tipo} />
                 <div className="flex justify-end">
                   <Button type="submit" size="sm" data-testid={`salvar-${tipo.id}`} disabled={salvando}>
@@ -788,6 +840,18 @@ export function TiposDeAgendamentoClient({
           </li>
         ))}
       </ul>
+
+      <section className="border-t border-border pt-8" aria-labelledby="regras-da-agenda">
+        <h2 id="regras-da-agenda" className="text-lg font-semibold text-text">Regras da agenda</h2>
+        <p className="mt-1 text-sm text-text-muted">Configurações gerais que valem para toda a clínica.</p>
+        <div className="mt-5 flex flex-col gap-4">
+          {podeConfigurarGoogle && <AgendasConectadas />}
+          <PrazosDePresenca podeEditar={podeEditar}/>
+          <ClientePelaAgenda ligadoInicial={clientePelaAgendaLigado} podeLigar={podeLigarClientePelaAgenda} />
+          <AgendaDosColegas ligadoInicial={colegasPodemMexerNaAgendaLigado} podeMudar={podeMudarAgendaDosColegas} />
+          <DiasBloqueados podeEditar={podeEditar}/>
+        </div>
+      </section>
     </div>
   );
 }
