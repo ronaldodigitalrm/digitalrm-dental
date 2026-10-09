@@ -39650,3 +39650,63 @@ end $$;
 -- a lista de erros benignos do update.sh, então a atualização não diz
 -- "atualizado" com módulo fora do ar. Instalação nova não tem módulo: no-op.
 do $f$ begin perform public.fn_conferir_modulos_instalados(); end $f$;
+
+-- ---- Catálogos Dental (migration 0422) ----
+-- Vocabulários administrativos por clínica. Não são prontuário e não incluem
+-- dados de saúde; apenas tornam o catálogo de serviços configurável.
+create table if not exists public.dental_service_categories (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  name text not null check (char_length(btrim(name)) between 2 and 80),
+  is_active boolean not null default true,
+  position numeric not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists dental_service_categories_org_name_active_key on public.dental_service_categories (organization_id, lower(name)) where is_active;
+create index if not exists dental_service_categories_org_active_idx on public.dental_service_categories (organization_id, is_active, position, name);
+
+create table if not exists public.dental_professional_types (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  name text not null check (char_length(btrim(name)) between 2 and 80),
+  is_active boolean not null default true,
+  position numeric not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists dental_professional_types_org_name_active_key on public.dental_professional_types (organization_id, lower(name)) where is_active;
+create index if not exists dental_professional_types_org_active_idx on public.dental_professional_types (organization_id, is_active, position, name);
+
+create table if not exists public.dental_locations (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  name text not null check (char_length(btrim(name)) between 2 and 80),
+  is_active boolean not null default true,
+  position numeric not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists dental_locations_org_name_active_key on public.dental_locations (organization_id, lower(name)) where is_active;
+create index if not exists dental_locations_org_active_idx on public.dental_locations (organization_id, is_active, position, name);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['dental_service_categories', 'dental_professional_types', 'dental_locations'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists tenant_isolation_%I_all on public.%I', t, t);
+    execute format($f$ create policy tenant_isolation_%I_all on public.%I for all using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin()) with check (public.fn_is_platform_admin() or (organization_id in (select public.fn_user_org_ids()) and public.fn_role_at_least(organization_id, 'manager'))) $f$, t, t);
+    execute format('revoke all on public.%I from anon', t);
+  end loop;
+end $$;
+do $$
+declare t text;
+begin
+  if exists (select 1 from pg_proc where proname = 'fn_touch_updated_at') then
+    foreach t in array array['dental_service_categories', 'dental_professional_types', 'dental_locations'] loop
+      execute format('drop trigger if exists trg_%I_touch on public.%I', t, t);
+      execute format('create trigger trg_%I_touch before update on public.%I for each row execute function public.fn_touch_updated_at()', t, t);
+    end loop;
+  end if;
+end $$;

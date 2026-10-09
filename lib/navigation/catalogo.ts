@@ -339,6 +339,18 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
   {
+    // Os vocabulários que alimentam o cadastro de Serviços. Fica abaixo da
+    // Central porque é preparação da clínica, não uma nova frente de CRM.
+    href: "/app/dental/cadastros",
+    label: "Cadastros Dental",
+    description: "Categorias, tipos de profissional e locais da clínica.",
+    icon: "ListChecks",
+    group: "organizacao",
+    section: "Sua empresa",
+    sidebar: true,
+    parentHref: "/app/dental",
+  },
+  {
     // O BALCÃO. Fica em CRM, e não em Configurações, porque é uso diário de quem
     // está com a cliente na frente — a tela irmã, em Configurações › Financeiro,
     // é onde o negócio se descreve uma vez.

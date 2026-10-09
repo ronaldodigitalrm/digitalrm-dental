@@ -44,6 +44,7 @@ aplica.
 ## Applied
 
 | Version | Name | Description |
+| `20261008010000` | `0422_catalogos_dental` | Cria os três vocabulários administrativos por clínica: categorias de serviço, tipos de profissional e locais. São tabelas com `organization_id`, RLS pelo helper da casa e inativação em vez de exclusão. Não guardam prontuário nem dados clínicos. Esta fatia entrega o cadastro das fontes; o vínculo N:N com Serviços entra depois, evitando um seletor que pareça salvar algo ainda inexistente. |
 |---|---|---|
 | `20260428195354` | `0001_platform_base` | organizations, user_organizations, platform_admins, api_tokens, api_audit_log, user_recovery_codes, idempotency_keys + RLS helpers (fn_user_org_ids, fn_is_platform_admin, fn_user_role_in_org, fn_role_at_least) |
 | `20260428195513` | `0002_event_log_and_compat` | event_log + emit_event/fn_log_event helpers + compat aliases (fn_set_updated_at, fn_user_role_in returning int) |

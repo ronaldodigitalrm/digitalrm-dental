@@ -571,6 +571,9 @@ export const AUDIT_ACTIONS = [
   // próprio: como `agenda.tipo_alterado { campos: ["is_active"] }` ele seria,
   // na trilha, indistinguível de "mudaram a duração".
   "agenda.tipo_reativado",
+  "dental.catalogo_criado",
+  "dental.catalogo_renomeado",
+  "dental.catalogo_desativado",
   // A opção da ORGANIZAÇÃO que decide se o Atendente mexe na agenda dos colegas
   // (issue #978, migration 0343). É ato de gestão como o dos tipos acima: muda o
   // que TODO Atendente pode fazer a partir dali, e sem esta linha a primeira

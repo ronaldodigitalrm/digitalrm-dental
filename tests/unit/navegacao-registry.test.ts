@@ -138,6 +138,7 @@ describe("sidebarGroups", () => {
       "/app/tasks",
       "/app/settings/tenant/agenda",
       "/app/dental",
+      "/app/dental/cadastros",
       "/app/team",
       // "/app/calls" (telefonia por SIP) NÃO entra aqui, e a ausência é a
       // decisão: o módulo é OPCIONAL e nasce desligado (doc 27), então a porta
@@ -149,6 +150,7 @@ describe("sidebarGroups", () => {
     ]);
     expect(dest("/app/settings/tenant/agenda").parentHref).toBe("/app/dental");
     expect(dest("/app/team").parentHref).toBe("/app/dental");
+    expect(dest("/app/dental/cadastros").parentHref).toBe("/app/dental");
     // E continua alcançável: o hub é a porta dela.
     expect(
       hubSections("crm", true, null).flatMap((s) => s.items.map((i) => i.href)),

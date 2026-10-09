@@ -75,6 +75,15 @@ export default async function DentalPage() {
 
   const passos: SetupStep[] = [
     {
+      title: "Cadastros da clínica",
+      description:
+        "Defina categorias, especialidades e locais antes de montar os serviços que a recepção poderá oferecer.",
+      href: "/app/dental/cadastros",
+      action: "Abrir cadastros",
+      ready: false,
+      icon: CalendarDots,
+    },
+    {
       title: "Serviços da clínica",
       description:
         "Cadastre avaliação, retorno e procedimentos com duração, preço e lembretes aprovados.",
@@ -103,7 +112,7 @@ export default async function DentalPage() {
     },
   ];
 
-  const proximaAcao = passos.find((passo) => !passo.ready) ?? passos[2];
+  const proximaAcao = passos.find((passo) => !passo.ready) ?? passos.at(-1)!;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-7 sm:px-8 lg:py-10">
@@ -146,7 +155,7 @@ export default async function DentalPage() {
               <h2 className="text-xl font-semibold tracking-tight text-text">Preparar a operação</h2>
               <p className="mt-1 text-sm text-text-muted">Conclua nesta ordem para a recepção começar a agendar.</p>
             </div>
-            <Badge variant="neutral">{passos.filter((passo) => passo.ready).length}/3 preparados</Badge>
+            <Badge variant="neutral">{passos.filter((passo) => passo.ready).length}/{passos.length} preparados</Badge>
           </div>
 
           <ol className="divide-y divide-border border-y border-border">
