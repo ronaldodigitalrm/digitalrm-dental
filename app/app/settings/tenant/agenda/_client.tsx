@@ -471,7 +471,13 @@ export function TiposDeAgendamentoClient({
                   multiple
                   required
                   value={rascunho.dental_professional_type_ids}
-                  onChange={(e) => setRascunho((r) => ({ ...r, dental_professional_type_ids: Array.from(e.currentTarget.selectedOptions, (option) => option.value) }))}
+                  onChange={(e) => {
+                    // O updater funcional pode rodar depois que o handler termina.
+                    // Nesse momento `currentTarget` já não é confiável; capturamos
+                    // os ids enquanto o evento ainda está ativo para não derrubar a tela.
+                    const ids = Array.from(e.currentTarget.selectedOptions, (option) => option.value);
+                    setRascunho((r) => ({ ...r, dental_professional_type_ids: ids }));
+                  }}
                   className="min-h-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
                 >
                   {tiposProfissionaisDental.map((tipoProfissional) => (
@@ -489,7 +495,10 @@ export function TiposDeAgendamentoClient({
                   multiple
                   required
                   value={rascunho.dental_location_ids}
-                  onChange={(e) => setRascunho((r) => ({ ...r, dental_location_ids: Array.from(e.currentTarget.selectedOptions, (option) => option.value) }))}
+                  onChange={(e) => {
+                    const ids = Array.from(e.currentTarget.selectedOptions, (option) => option.value);
+                    setRascunho((r) => ({ ...r, dental_location_ids: ids }));
+                  }}
                   className="min-h-24 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
                 >
                   {locaisDental.map((local) => <option key={local.id} value={local.id}>{local.name}</option>)}
