@@ -81,6 +81,7 @@ const rotuloDe = (lista: ReadonlyArray<{ valor: string; rotulo: string }>, valor
 
 interface Rascunho {
   name: string;
+  description: string;
   dental_category_id: string;
   dental_professional_type_ids: string[];
   dental_location_ids: string[];
@@ -91,6 +92,7 @@ interface Rascunho {
 
 const VAZIO: Rascunho = {
   name: "",
+  description: "",
   dental_category_id: "",
   dental_professional_type_ids: [],
   dental_location_ids: [],
@@ -418,6 +420,7 @@ export function TiposDeAgendamentoClient({
                   () =>
                     apiClient.post("/api/v1/agenda/tipos", {
                       name: rascunho.name.trim(),
+                      description: rascunho.description.trim() || null,
                       // Os campos legados mantêm compatibilidade com a agenda
                       // genérica; o catálogo Dental é a fonte mostrada à clínica.
                       category: "procedimento",
@@ -449,6 +452,21 @@ export function TiposDeAgendamentoClient({
                   placeholder={t("Retorno")}
                   className="w-full rounded-md border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
                 />
+              </label>
+              <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-text-muted">
+                {t("Descrição para a recepção e IA")}
+                <textarea
+                  data-testid="novo-tipo-descricao"
+                  rows={4}
+                  maxLength={500}
+                  value={rascunho.description}
+                  onChange={(e) => setRascunho((r) => ({ ...r, description: e.target.value }))}
+                  placeholder={t("Ex.: limpeza preventiva. Explique para que serve, dúvidas que a recepção pode esclarecer, preparo necessário e quando encaminhar ao dentista.")}
+                  className="w-full resize-y rounded-md border border-border bg-surface-elevated p-2 text-sm text-text outline-hidden focus:border-border-strong"
+                />
+                <span className="text-[11px] font-normal text-text-muted">
+                  {t("Use linguagem prática: indicação, limites de orientação e quando a equipe humana deve assumir.")}
+                </span>
               </label>
               <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-text-muted">
                 {t("Categoria do serviço")}
@@ -728,6 +746,7 @@ export function TiposDeAgendamentoClient({
                       apiClient.patch("/api/v1/agenda/tipos", {
                         id: tipo.id,
                         name: String(dados.get("name") ?? "").trim(),
+                        description: String(dados.get("description") ?? "").trim() || null,
                         category: tipo.category,
                         dental_category_id: String(dados.get("dental_category_id") ?? ""),
                         dental_professional_type_ids: dados.getAll("dental_professional_type_ids").map(String),
@@ -793,6 +812,20 @@ export function TiposDeAgendamentoClient({
                       data-testid={`editar-nome-${tipo.id}`}
                       className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
                     />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-text-muted sm:col-span-3">
+                    {t("Descrição para a recepção e IA")}
+                    <textarea
+                      name="description"
+                      rows={3}
+                      maxLength={500}
+                      defaultValue={tipo.description ?? ""}
+                      placeholder={t("Explique finalidade, dúvidas permitidas, preparo e quando encaminhar ao dentista.")}
+                      className="resize-y rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
+                    />
+                    <span className="text-[11px] text-text-muted">
+                      {t("Esse contexto orienta a recepção e os agentes de IA; não inclua dados de pacientes.")}
+                    </span>
                   </label>
                   <label className="flex flex-col gap-1 text-xs text-text-muted">
                     {t("Categoria do serviço")}
